@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "412683657587",
+    "project_id": "alifsteelapp",
+    "storage_bucket": "alifsteelapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:412683657587:android:913eb20632db5ba4d52506",
+        "android_client_info": {
+          "package_name": "com.example.alif_steel_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCtSM2de3h6YelW8ohHBMiZHWpIrSAHFek"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:412683657587:android:b7eb09631ccc7e61d52506",
+        "android_client_info": {
+          "package_name": "com.example.steel_project"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCtSM2de3h6YelW8ohHBMiZHWpIrSAHFek"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
