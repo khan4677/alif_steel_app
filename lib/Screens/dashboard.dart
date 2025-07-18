@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'login.dart';
 import '../widgets.dart';
+import 'pdf_generator.dart'; // Add this line
 
 
 class DashboardPage extends StatefulWidget {
@@ -14,11 +15,12 @@ class DashboardPage extends StatefulWidget {
 
 class DashboardPageState extends State<DashboardPage> {
   final _formKey = GlobalKey<FormState>();
+  List<OrderItem> _orderItems = [];
+
 
   // Controllers for form fields
   final TextEditingController _slNoController = TextEditingController();
-  final TextEditingController _supplierPartyController =
-      TextEditingController();
+  final TextEditingController _supplierPartyController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _thicknessController = TextEditingController();
@@ -28,7 +30,11 @@ class DashboardPageState extends State<DashboardPage> {
   final TextEditingController _tnController = TextEditingController();
   final TextEditingController _rateController = TextEditingController();
   final TextEditingController _discountController = TextEditingController();
-
+  // Add these controllers for PDF fields
+  final TextEditingController _paymentDateController = TextEditingController();
+  final TextEditingController _paymentAmountController = TextEditingController();
+  final TextEditingController _outstandingController = TextEditingController();
+  final TextEditingController _totalBillController = TextEditingController();
   // Dropdown values
   String? _selectedColor;
   String? _selectedType;
@@ -250,11 +256,11 @@ class DashboardPageState extends State<DashboardPage> {
                 // Action Buttons
                 Row(
                   children: [
-                    Expanded(
+                      Expanded(
                       child: ElevatedButton(
-                        onPressed: _submitForm,
+                      onPressed: _generatePDF, // Changed from _printForm
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green[700],
+                          backgroundColor: Colors.blue[700], // Changed from green to blue
                           padding: EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -273,7 +279,7 @@ class DashboardPageState extends State<DashboardPage> {
                     SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: _printForm,
+                        onPressed: _generatePDF,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green[700],
                           padding: EdgeInsets.symmetric(vertical: 16),
@@ -353,37 +359,134 @@ class DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  void _printForm() {
-    print('Print functionality');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Print functionality will be implemented'),
-        backgroundColor: Colors.blue[700],
-      ),
-    );
-  }
 
   void _addAnotherOrder() {
-    // Clear only product-specific fields, keep customer info
-    // Don't clear: SL NO, Supplier Party Name, Address, Phone Number
-    _thicknessController.clear();
-    _widthController.clear();
-    _lengthController.clear();
-    _pcsController.clear();
-    _tnController.clear();
-    _rateController.clear();
-    _discountController.clear();
+    if (_formKey.currentState!.validate()) {
+      final item = OrderItem(
+        particular: _selectedType ?? 'N/A',
+        width: _widthController.text,
+        col6: '-',
+        col7: '-',
+        col8: '-',
+        col9: '-',
+        col10: '-',
+        totalPTon: _tnController.text,
+        totalWTon: '-',
+        pricePerTon: _rateController.text,
+      );
 
-    setState(() {
-      _selectedColor = null;
-      _selectedType = null;
-    });
+      setState(() {
+        _orderItems.add(item);
+        // Clear all form controllers consistently
+        _thicknessController.clear();
+        _widthController.clear();
+        _lengthController.clear();
+        _pcsController.clear();
+        _tnController.clear();
+        _rateController.clear();
+        _discountController.clear();
+        _selectedColor = null;
+        _selectedType = null;
+      });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Form cleared for new order - Customer info preserved'),
-        backgroundColor: Colors.orange[700],
-      ),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Item added. Fill next order.'),
+          backgroundColor: Colors.orange[700],
+        ),
+      );
+    }
+  }
+
+  void _generatePDF() async {
+    if (_formKey.currentState!.validate()) {
+      try {
+        // Add last form entry to the list
+        final item = OrderItem(
+          particular: _selectedType ?? 'N/A',
+          width: _widthController.text,
+          col6: '-',
+          col7: '-',
+          col8: '-',
+          col9: '-',
+          col10: '-',
+          totalPTon: _tnController.text,
+          totalWTon: '-',
+          pricePerTon: _rateController.text,
+        );
+
+        // Create a temporary list to avoid modifying the original during PDF generation
+        final itemsForPDF = List<OrderItem>.from(_orderItems)..add(item);
+
+        // Calculate total bill properly
+        double totalBill = 0.0;
+        for (var orderItem in itemsForPDF) {
+          try {
+            final tons = double.tryParse(orderItem.totalPTon) ?? 0.0;
+            final rate = double.tryParse(orderItem.pricePerTon) ?? 0.0;
+            totalBill += tons * rate;
+          } catch (e) {
+            // Handle parsing errors gracefully
+            print('Error calculating total for item: $e');
+          }
+        }
+
+        // The PDF service handles file saving internally - no need to call _savePDFToDownloads
+        await PDFGeneratorService.generateDeliveryOrderPDF(
+          date: DateTime.now().toString().split(' ')[0],
+          customerName: _supplierPartyController.text,
+          address: _addressController.text,
+          items: itemsForPDF,
+          paymentDate: DateTime.now().toString().split(' ')[0],
+          paymentAmount: '0',
+          outstanding: totalBill.toStringAsFixed(2),
+          totalBill: totalBill.toStringAsFixed(2),
+        );
+
+        // Show single success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('PDF saved to Downloads folder! (${itemsForPDF.length} items)'),
+            backgroundColor: Colors.green[700],
+          ),
+        );
+
+        // Clear form after successful PDF generation
+        setState(() {
+          _orderItems.clear();
+          _thicknessController.clear();
+          _widthController.clear();
+          _lengthController.clear();
+          _pcsController.clear();
+          _tnController.clear();
+          _rateController.clear();
+          _discountController.clear();
+          _selectedColor = null;
+          _selectedType = null;
+        });
+
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error generating PDF: $e'),
+            backgroundColor: Colors.red[700],
+          ),
+        );
+      }
+    }
+  }
+  @override
+  void dispose() {
+    // Clean up controllers when the widget is disposed
+    _thicknessController.dispose();
+    _widthController.dispose();
+    _lengthController.dispose();
+    _pcsController.dispose();
+    _tnController.dispose();
+    _rateController.dispose();
+    _discountController.dispose();
+    _supplierPartyController.dispose();
+    _addressController.dispose();
+    super.dispose();
   }
 }
