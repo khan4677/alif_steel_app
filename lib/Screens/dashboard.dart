@@ -38,63 +38,93 @@ class DashboardPageState extends State<DashboardPage> {
   final List<String> _colors = ['CNG','BLUE','RED','PARROT','M-GREEN','WHITE','GREEN','SILVER'];
   final List<String> _types = ['CHERRY','CHERRY 10/11','CHERRY 11/12','BORO','BORO 10/11','BORO 11/12','PROFILE','INDSL. PROFILE','GP SHEET','B. TALLY','TUA','BABY COIL','COIL'];
 
-  bool _isUpdating = false; // Prevent circular PCS ↔ TN updates
+  bool _isUpdating = false;
+  bool _lastEditedTn = false; // track last edit source
 
   @override
   void initState() {
     super.initState();
+
+    // any change in pcs
     _pcsController.addListener(() {
       if (!_isUpdating) {
-        _isUpdating = true;
-        _calculateTonAndPcs(fromPCS: true);
-        _isUpdating = false;
+        _lastEditedTn = false;
+        _recalculate();
       }
     });
+
+    // any change in tn
     _tnController.addListener(() {
       if (!_isUpdating) {
-        _isUpdating = true;
-        _calculateTonAndPcs(fromPCS: false);
-        _isUpdating = false;
+        _lastEditedTn = true;
+        _recalculate();
       }
+    });
+
+    // any change in thickness or length triggers recalculation
+    _thicknessController.addListener(() {
+      if (!_isUpdating) _recalculate();
+    });
+    _lengthController.addListener(() {
+      if (!_isUpdating) _recalculate();
     });
   }
 
-  void _calculateTonAndPcs({required bool fromPCS}) {
+  void _recalculate() {
+    _isUpdating = true;
+
     final thickness = double.tryParse(_thicknessController.text) ?? 0;
     final length = double.tryParse(_lengthController.text) ?? 0;
-    if (thickness == 0 || length == 0) return;
-
-    int pcsPerTon = 1;
-
-    if (thickness >= 130 && thickness <= 260) {
-      if (length == 6) pcsPerTon = 282;
-      else if (length == 7) pcsPerTon = 241;
-      else if (length == 8) pcsPerTon = 211;
-      else if (length == 9) pcsPerTon = 188;
-      else if (length == 10) pcsPerTon = 169;
-    } else if (thickness >= 320 && thickness <= 360) {
-      if (length == 6) pcsPerTon = 224;
-      else if (length == 7) pcsPerTon = 192;
-      else if (length == 8) pcsPerTon = 168;
-      else if (length == 9) pcsPerTon = 149;
-      else if (length == 10) pcsPerTon = 134;
-    } else if (thickness >= 420 && thickness <= 510) {
-      if (length == 6) pcsPerTon = 175;
-      else if (length == 7) pcsPerTon = 150;
-      else if (length == 8) pcsPerTon = 131;
-      else if (length == 9) pcsPerTon = 117;
-      else if (length == 10) pcsPerTon = 105;
+    if (thickness == 0 || length == 0) {
+      _isUpdating = false;
+      return;
     }
 
-    if (fromPCS) {
+    int pcsPerTon = _getPcsPerTon(thickness, length);
+    if (pcsPerTon == 0) {
+      _isUpdating = false;
+      return;
+    }
+
+    if (_lastEditedTn) {
+      final tn = double.tryParse(_tnController.text) ?? 0.0;
+      final pcs = (tn * pcsPerTon).round();
+      if (_pcsController.text != pcs.toString()) {
+        _pcsController.text = pcs.toString();
+      }
+    } else {
       final pcs = int.tryParse(_pcsController.text) ?? 0;
       final tn = pcs / pcsPerTon;
-      _tnController.text = tn.toStringAsFixed(3);
-    } else {
-      final tn = double.tryParse(_tnController.text) ?? 0;
-      final pcs = (tn * pcsPerTon).round();
-      _pcsController.text = pcs.toString();
+      final tnStr = tn.toStringAsFixed(3);
+      if (_tnController.text != tnStr) {
+        _tnController.text = tnStr;
+      }
     }
+
+    _isUpdating = false;
+  }
+
+  int _getPcsPerTon(double thickness, double length) {
+    if (thickness >= 130 && thickness <= 260) {
+      if (length == 6) return 282;
+      if (length == 7) return 241;
+      if (length == 8) return 211;
+      if (length == 9) return 188;
+      if (length == 10) return 169;
+    } else if (thickness >= 320 && thickness <= 360) {
+      if (length == 6) return 224;
+      if (length == 7) return 192;
+      if (length == 8) return 168;
+      if (length == 9) return 149;
+      if (length == 10) return 134;
+    } else if (thickness >= 420 && thickness <= 510) {
+      if (length == 6) return 175;
+      if (length == 7) return 150;
+      if (length == 8) return 131;
+      if (length == 9) return 117;
+      if (length == 10) return 105;
+    }
+    return 0;
   }
 
   @override
@@ -102,20 +132,20 @@ class DashboardPageState extends State<DashboardPage> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        backgroundColor: Color(0xFFCDF5FD),
+        backgroundColor: const Color(0xFFCDF5FD),
         automaticallyImplyLeading: false,
         title: Center(
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 40, height: 40, margin: EdgeInsets.only(right: 10),
+              Container(width: 40, height: 40, margin: const EdgeInsets.only(right: 10),
                 decoration: BoxDecoration(color: Colors.white,borderRadius: BorderRadius.circular(8)),
                 child: Image.asset('assets/images/logo.png',fit: BoxFit.contain),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [
+                children: const [
                   Text('আলিফ স্টিল মিলস লিঃ', style: TextStyle(color: Color(0xFF3A0050), fontSize: 16, fontWeight: FontWeight.bold)),
                   Text('ALIF STEEL MILLS LTD.', style: TextStyle(color: Color(0xFF156132), fontSize: 12, fontWeight: FontWeight.bold)),
                 ],
@@ -125,52 +155,52 @@ class DashboardPageState extends State<DashboardPage> {
         ),
         actions: [
           PopupMenuButton<String>(
-            icon: Icon(Icons.more_vert, color: Colors.black),
+            icon: const Icon(Icons.more_vert, color: Colors.black),
             onSelected: (value) {
               if (value == 'logout') {
                 FirebaseAuth.instance.signOut();
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LoginPage()));
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginPage()));
               }
             },
             itemBuilder: (context) => [
-              PopupMenuItem(value: 'logout', child: Row(children: [Icon(Icons.logout), Text(' Logout')])),
+              const PopupMenuItem(value: 'logout', child: Row(children: [Icon(Icons.logout), Text(' Logout')]))
             ],
           ),
         ],
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16.0),
           child: Form(
             key: _formKey,
             child: Column(
               children: [
                 buildTextField(controller: _slNoController,label: 'SL. NO',keyboardType: TextInputType.number),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 buildTextField(controller: _supplierPartyController,label: 'Enter Party Name'),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 buildTextField(controller: _addressController,label: 'Enter Address',maxLines: 2),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 buildTextField(controller: _phoneController,label: 'Phone Number (optional)',keyboardType: TextInputType.phone),
-                SizedBox(height: 50),
-                buildTextField(controller: _thicknessController,label: 'Thickness (mm)',keyboardType: TextInputType.numberWithOptions(decimal: true)),
-                SizedBox(height: 16),
+                const SizedBox(height: 50),
+                buildTextField(controller: _thicknessController,label: 'Thickness (mm)',keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+                const SizedBox(height: 16),
                 buildDropdown(label: 'Color', value: _selectedColor, items: _colors,onChanged: (value){ setState((){_selectedColor = value;});}),
-                SizedBox(height: 16),
-                buildTextField(controller: _widthController,label: 'Width (inch)',keyboardType: TextInputType.numberWithOptions(decimal: true)),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
+                buildTextField(controller: _widthController,label: 'Width (inch)',keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+                const SizedBox(height: 16),
                 buildDropdown(label: 'P. Type', value: _selectedType, items: _types,onChanged: (value){ setState((){_selectedType = value;});}),
-                SizedBox(height: 16),
-                buildTextField(controller: _lengthController,label: 'Length (ft)',keyboardType: TextInputType.numberWithOptions(decimal: true)),
-                SizedBox(height: 16),
-                buildTextField(controller: _pcsController,label: 'PCS',keyboardType: TextInputType.numberWithOptions(decimal: true)),
-                SizedBox(height: 16),
-                buildTextField(controller: _tnController,label: 'PCS TN',keyboardType: TextInputType.numberWithOptions(decimal: true)),
-                SizedBox(height: 16),
-                buildTextField(controller: _rateController,label: 'Rate (TK)',keyboardType: TextInputType.numberWithOptions(decimal: true)),
-                SizedBox(height: 16),
-                buildTextField(controller: _discountController,label: 'Discount',keyboardType: TextInputType.numberWithOptions(decimal: true)),
-                SizedBox(height: 32),
+                const SizedBox(height: 16),
+                buildTextField(controller: _lengthController,label: 'Length (ft)',keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+                const SizedBox(height: 16),
+                buildTextField(controller: _pcsController,label: 'PCS',keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+                const SizedBox(height: 16),
+                buildTextField(controller: _tnController,label: 'PCS TN',keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+                const SizedBox(height: 16),
+                buildTextField(controller: _rateController,label: 'Rate (TK)',keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+                const SizedBox(height: 16),
+                buildTextField(controller: _discountController,label: 'Discount',keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+                const SizedBox(height: 32),
                 Row(
                   children: [
                     Expanded(
@@ -178,40 +208,40 @@ class DashboardPageState extends State<DashboardPage> {
                         onPressed: _generatePDF,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue[700],
-                          padding: EdgeInsets.symmetric(vertical: 16),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                        child: Text('Submit',style: TextStyle(color: Colors.white,fontSize: 16,fontWeight: FontWeight.bold)),
+                        child: const Text('Submit',style: TextStyle(color: Colors.white,fontSize: 16,fontWeight: FontWeight.bold)),
                       ),
                     ),
-                    SizedBox(width: 12),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
                         onPressed: _generatePDF,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green[700],
-                          padding: EdgeInsets.symmetric(vertical: 16),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                        child: Text('Print',style: TextStyle(color: Colors.white,fontSize: 16,fontWeight: FontWeight.bold)),
+                        child: const Text('Print',style: TextStyle(color: Colors.white,fontSize: 16,fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: _addAnotherOrder,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green[700],
-                      padding: EdgeInsets.symmetric(vertical: 16),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    child: Text('Add Another Order',style: TextStyle(color: Colors.white,fontSize: 16,fontWeight: FontWeight.bold)),
+                    child: const Text('Add Another Order',style: TextStyle(color: Colors.white,fontSize: 16,fontWeight: FontWeight.bold)),
                   ),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
               ],
             ),
           ),
@@ -249,7 +279,7 @@ class DashboardPageState extends State<DashboardPage> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Item added. Fill next order.'), backgroundColor: Colors.orange[700]),
+        SnackBar(content: const Text('Item added. Fill next order.'), backgroundColor: Colors.orange[700]),
       );
     }
   }
