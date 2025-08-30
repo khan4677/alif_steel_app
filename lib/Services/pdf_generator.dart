@@ -229,16 +229,16 @@ class PDFGeneratorService {
 }
 
 class OrderItem {
-  final String particular;
-  final String width;
-  final String col6;
-  final String col7;
-  final String col8;
-  final String col9;
-  final String col10;
-  final String totalPTon;
-  final String totalWTon;
-  final String pricePerTon;
+  String particular;    // Removed 'final'
+  String width;         // Removed 'final'
+  String col6;          // Removed 'final'
+  String col7;          // Removed 'final'
+  String col8;          // Removed 'final'
+  String col9;          // Removed 'final'
+  String col10;         // Removed 'final'
+  String totalPTon;     // Removed 'final'
+  String totalWTon;     // Removed 'final'
+  String pricePerTon;   // Removed 'final'
 
   OrderItem({
     required this.particular,

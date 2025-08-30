@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'Screens/login.dart';
-import 'Screens/dashboard.dart'; // Add this import
+import 'Screens/dashboard.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,14 +21,14 @@ class MyApp extends StatelessWidget {
       home: AuthWrapper(), // Changed from LoginPage() to AuthWrapper()
       routes: {
         '/login': (context) => LoginPage(),
-        '/dashboard': (context) => DashboardPage(), // Add this route
+        '/dashboard': (context) => DashboardPage(),
       },
       debugShowCheckedModeBanner: false,
     );
   }
 }
 
-// Add this AuthWrapper class
+// AuthWrapper class
 class AuthWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {

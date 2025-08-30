@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'login.dart';
 import '../widgets.dart';
-import 'pdf_generator.dart'; // Add this line
+import '../Services/pdf_generator.dart'; // Add this line
 
 
 class DashboardPage extends StatefulWidget {
