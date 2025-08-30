@@ -21,14 +21,14 @@ class MyApp extends StatelessWidget {
       home: AuthWrapper(), // Changed from LoginPage() to AuthWrapper()
       routes: {
         '/login': (context) => LoginPage(),
-        '/dashboard': (context) => DashboardPage(),
+        '/dashboard': (context) => DashboardPage(), // Add this route
       },
       debugShowCheckedModeBanner: false,
     );
   }
 }
 
-// AuthWrapper class
+// Add this AuthWrapper class
 class AuthWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {

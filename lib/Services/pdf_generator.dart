@@ -49,42 +49,36 @@ class PDFGeneratorService {
                 pw.SizedBox(height: 20),
 
                 // Date and Customer Info
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text('Date: $date', style: pw.TextStyle(fontSize: 12)),
-                        pw.SizedBox(height: 10),
-                        pw.Text('Customer Name:', style: pw.TextStyle(fontSize: 12)),
-                        pw.Text(customerName, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-                        pw.SizedBox(height: 10),
-                        pw.Text('Address: $address', style: pw.TextStyle(fontSize: 12)),
-                      ],
-                    ),
+                    pw.Text('Date- $date', style: pw.TextStyle(fontSize: 14)),
+                    pw.SizedBox(height: 8),
+                    pw.Text('Customer Name- $customerName', style: pw.TextStyle(fontSize: 14)),
+                    pw.SizedBox(height: 8),
+                    pw.Text('Address-$address', style: pw.TextStyle(fontSize: 14)),
                   ],
                 ),
                 pw.SizedBox(height: 20),
 
-                // Table with proper structure
+                // Table with proper structure matching the PDF format
                 pw.Table(
-                  border: pw.TableBorder.all(color: PdfColors.black, width: 1),
+                  border: pw.TableBorder.all(color: PdfColors.black, width: 0.5),
                   columnWidths: {
-                    0: pw.FlexColumnWidth(2.5),
+                    0: pw.FlexColumnWidth(3),
                     1: pw.FlexColumnWidth(1),
                     2: pw.FlexColumnWidth(1),
                     3: pw.FlexColumnWidth(1),
                     4: pw.FlexColumnWidth(1),
                     5: pw.FlexColumnWidth(1),
-                    6: pw.FlexColumnWidth(1.2),
-                    7: pw.FlexColumnWidth(1.2),
+                    6: pw.FlexColumnWidth(1),
+                    7: pw.FlexColumnWidth(1),
                     8: pw.FlexColumnWidth(1.2),
                   },
                   children: [
                     // Header row
                     pw.TableRow(
-                      decoration: pw.BoxDecoration(color: PdfColors.grey200),
+                      decoration: pw.BoxDecoration(color: PdfColors.grey100),
                       children: [
                         _buildTableCell('Particulars\n(Colour) Width mm', isHeader: true),
                         _buildTableCell('6\'', isHeader: true),
@@ -97,10 +91,27 @@ class PDFGeneratorService {
                         _buildTableCell('Price/\nPcs Ton', isHeader: true),
                       ],
                     ),
+
+                    // Second header row
+                    pw.TableRow(
+                      decoration: pw.BoxDecoration(color: PdfColors.grey100),
+                      children: [
+                        _buildTableCell('', isHeader: true),
+                        _buildTableCell('P.Ton', isHeader: true, fontSize: 8),
+                        _buildTableCell('P.Ton', isHeader: true, fontSize: 8),
+                        _buildTableCell('P.Ton', isHeader: true, fontSize: 8),
+                        _buildTableCell('P.Ton', isHeader: true, fontSize: 8),
+                        _buildTableCell('P.Tom', isHeader: true, fontSize: 8),
+                        _buildTableCell('', isHeader: true),
+                        _buildTableCell('', isHeader: true),
+                        _buildTableCell('', isHeader: true),
+                      ],
+                    ),
+
                     // Data rows
                     ...items.map((item) => pw.TableRow(
                       children: [
-                        _buildTableCell('${item.particular} ${item.width}\"'),
+                        _buildTableCell('${item.particular} ${item.width}'),
                         _buildTableCell(item.col6),
                         _buildTableCell(item.col7),
                         _buildTableCell(item.col8),
@@ -108,9 +119,25 @@ class PDFGeneratorService {
                         _buildTableCell(item.col10),
                         _buildTableCell(item.totalPTon),
                         _buildTableCell(item.totalWTon),
-                        _buildTableCell(item.pricePerTon),
+                        _buildTableCell('${item.pricePerTon}/-'),
                       ],
                     )).toList(),
+
+                    // Total row
+                    pw.TableRow(
+                      decoration: pw.BoxDecoration(color: PdfColors.grey100),
+                      children: [
+                        _buildTableCell('Total-', isHeader: true),
+                        _buildTableCell('', isHeader: true),
+                        _buildTableCell('', isHeader: true),
+                        _buildTableCell('', isHeader: true),
+                        _buildTableCell('', isHeader: true),
+                        _buildTableCell('', isHeader: true),
+                        _buildTableCell(_calculateTotalPTon(items), isHeader: true),
+                        _buildTableCell('', isHeader: true),
+                        _buildTableCell('', isHeader: true),
+                      ],
+                    ),
                   ],
                 ),
 
@@ -120,18 +147,18 @@ class PDFGeneratorService {
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text('Payment $paymentDate - PBL - $paymentAmount',
-                        style: pw.TextStyle(fontSize: 12)),
+                    pw.Text('Payment $paymentDate-PBL-$paymentAmount/-',
+                        style: pw.TextStyle(fontSize: 14)),
                     pw.SizedBox(height: 5),
-                    pw.Text('Outstanding', style: pw.TextStyle(fontSize: 12)),
-                    pw.Text('জমা আছে - $outstanding',
-                        style: pw.TextStyle(fontSize: 12, font: font)),
+                    pw.Text('OutStanding', style: pw.TextStyle(fontSize: 14)),
+                    pw.Text('জমা আছে -$outstanding/-',
+                        style: pw.TextStyle(fontSize: 14, font: font)),
                     pw.SizedBox(height: 5),
-                    pw.Text('Total Bill - $totalBill',
-                        style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                    pw.Text('Total Bill-$totalBill/-',
+                        style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
                     pw.SizedBox(height: 10),
                     pw.Text('বি:দ্র - মাল তোলার সময় ডেলিভারি পেপার নিয়ে আসবেন (গ্যারান্টি মাল নয়)',
-                        style: pw.TextStyle(fontSize: 10, font: font)),
+                        style: pw.TextStyle(fontSize: 12, font: font)),
                   ],
                 ),
               ],
@@ -145,19 +172,47 @@ class PDFGeneratorService {
 
       print('PDF saved to Downloads: $filePath');
 
+      // Print PDF content after generation
+      _printPDFContent(date, customerName, address, items, paymentDate, paymentAmount, outstanding, totalBill);
+
     } catch (e) {
       print('Error generating PDF: $e');
       rethrow;
     }
   }
 
-  static pw.Widget _buildTableCell(String text, {bool isHeader = false}) {
+  static String _calculateTotalPTon(List<OrderItem> items) {
+    double total = 0.0;
+    for (var item in items) {
+      total += double.tryParse(item.totalPTon) ?? 0.0;
+    }
+    return total.toStringAsFixed(3);
+  }
+
+  static void _printPDFContent(String date, String customerName, String address, List<OrderItem> items, String paymentDate, String paymentAmount, String outstanding, String totalBill) {
+    print('\n=== PDF CONTENT ===');
+    print('Date: $date');
+    print('Customer Name: $customerName');
+    print('Address: $address');
+    print('\nItems:');
+    for (int i = 0; i < items.length; i++) {
+      final item = items[i];
+      print('${i + 1}. ${item.particular} ${item.width} - P.Ton: ${item.totalPTon}, Price: ${item.pricePerTon}/-');
+    }
+    print('\nPayment Date: $paymentDate');
+    print('Payment Amount: $paymentAmount/-');
+    print('Outstanding: $outstanding/-');
+    print('Total Bill: $totalBill/-');
+    print('==================\n');
+  }
+
+  static pw.Widget _buildTableCell(String text, {bool isHeader = false, double fontSize = 10}) {
     return pw.Container(
-      padding: pw.EdgeInsets.all(6),
+      padding: pw.EdgeInsets.all(4),
       child: pw.Text(
         text,
         style: pw.TextStyle(
-          fontSize: isHeader ? 10 : 9,
+          fontSize: isHeader ? fontSize : 9,
           fontWeight: isHeader ? pw.FontWeight.bold : pw.FontWeight.normal,
         ),
         textAlign: pw.TextAlign.center,
@@ -229,16 +284,16 @@ class PDFGeneratorService {
 }
 
 class OrderItem {
-  String particular;    // Removed 'final'
-  String width;         // Removed 'final'
-  String col6;          // Removed 'final'
-  String col7;          // Removed 'final'
-  String col8;          // Removed 'final'
-  String col9;          // Removed 'final'
-  String col10;         // Removed 'final'
-  String totalPTon;     // Removed 'final'
-  String totalWTon;     // Removed 'final'
-  String pricePerTon;   // Removed 'final'
+  String particular;
+  String width;
+  String col6;
+  String col7;
+  String col8;
+  String col9;
+  String col10;
+  String totalPTon;
+  String totalWTon;
+  String pricePerTon;
 
   OrderItem({
     required this.particular,
