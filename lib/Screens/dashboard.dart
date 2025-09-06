@@ -75,27 +75,27 @@ class DashboardPageState extends State<DashboardPage> {
 
     final thickness = double.tryParse(_thicknessController.text) ?? 0;
     final length = double.tryParse(_lengthController.text) ?? 0;
-    if (thickness == 0 || length == 0) {
-      _isUpdating = false;
-      return;
-    }
+    final pcs = int.tryParse(_pcsController.text) ?? 0;
 
-    int pcsPerTon = _getPcsPerTon(thickness, length);
-    if (pcsPerTon == 0) {
+    if (thickness <= 0 || length <= 0) {
       _isUpdating = false;
       return;
     }
 
     if (_lastEditedTn) {
+      // User edited TN → we calculate PCS (must be int)
       final tn = double.tryParse(_tnController.text) ?? 0.0;
-      final pcs = (tn * pcsPerTon).round();
-      if (_pcsController.text != pcs.toString()) {
-        _pcsController.text = pcs.toString();
+      final pcsPerTon = _getPcsPerTon(thickness, length, pcs, tnMode: true);
+      if (pcsPerTon > 0) {
+        final newPcs = (tn * pcsPerTon).round();
+        if (_pcsController.text != newPcs.toString()) {
+          _pcsController.text = newPcs.toString();
+        }
       }
     } else {
-      final pcs = int.tryParse(_pcsController.text) ?? 0;
-      final tn = pcs / pcsPerTon;
-      final tnStr = tn.toStringAsFixed(3);
+      // User edited PCS → we calculate TN (can be decimal)
+      final tn = _getTonsFromPcs(thickness, length, pcs);
+      final tnStr = tn.toStringAsFixed(4); // show full precision
       if (_tnController.text != tnStr) {
         _tnController.text = tnStr;
       }
@@ -104,7 +104,26 @@ class DashboardPageState extends State<DashboardPage> {
     _isUpdating = false;
   }
 
-  int _getPcsPerTon(double thickness, double length) {
+  double _getTonsFromPcs(double thickness, double length, int pcs) {
+    // for table lengths
+    final pcsPerTon = _getPcsPerTon(thickness, length, pcs);
+    if (pcsPerTon > 0) {
+      return pcs / pcsPerTon;
+    }
+
+    // fallback by rule formulas
+    if (thickness >= 130 && thickness <= 260) {
+      return (1 * length * pcs) / (282 * 6);
+    } else if (thickness >= 320 && thickness <= 360) {
+      return (1 * length * pcs) / (224 * 6);
+    } else if (thickness >= 420 && thickness <= 510) {
+      return (1 * length * pcs) / (175 * 6);
+    }
+    return 0.0;
+  }
+
+  double _getPcsPerTon(double thickness, double length, int pcs, {bool tnMode = false}) {
+    // If using table (6–10 lengths)
     if (thickness >= 130 && thickness <= 260) {
       if (length == 6) return 282;
       if (length == 7) return 241;
@@ -124,8 +143,21 @@ class DashboardPageState extends State<DashboardPage> {
       if (length == 9) return 117;
       if (length == 10) return 105;
     }
-    return 0;
+
+    // for TN → PCS reverse calc, we need equivalent pcs/ton from formula
+    if (tnMode) {
+      if (thickness >= 130 && thickness <= 260) {
+        return (282 * 6) / length; // invert formula
+      } else if (thickness >= 320 && thickness <= 360) {
+        return (224 * 6) / length;
+      } else if (thickness >= 420 && thickness <= 510) {
+        return (175 * 6) / length;
+      }
+    }
+
+    return 0; // no match
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -252,21 +284,31 @@ class DashboardPageState extends State<DashboardPage> {
 
   void _addAnotherOrder() {
     if (_formKey.currentState!.validate()) {
+      int length = int.tryParse(_lengthController.text) ?? 0;
+      int pcs = int.tryParse(_pcsController.text) ?? 0;
+
+      if (length <= 0 || pcs <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Length and PCS must be greater than 0'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
       final item = OrderItem(
         particular: _selectedType ?? 'N/A',
-        width: _widthController.text,
-        col6: '-',
-        col7: '-',
-        col8: '-',
-        col9: '-',
-        col10: '-',
-        totalPTon: _tnController.text,
-        totalWTon: '-',
-        pricePerTon: _rateController.text,
+        width: _widthController.text.isNotEmpty ? _widthController.text : '-',
+        lengthPcs: {length: pcs},
+        totalPTon: _tnController.text.isNotEmpty ? _tnController.text : '0',
+        totalWTon: '-', // placeholder
+        pricePerTon: _rateController.text.isNotEmpty ? _rateController.text : '0',
       );
 
       setState(() {
         _orderItems.add(item);
+        // Clear form for next entry
         _thicknessController.clear();
         _widthController.clear();
         _lengthController.clear();
@@ -279,40 +321,59 @@ class DashboardPageState extends State<DashboardPage> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('Item added. Fill next order.'), backgroundColor: Colors.orange[700]),
+        const SnackBar(
+          content: Text('Item added. Fill next order.'),
+          backgroundColor: Colors.orange,
+        ),
       );
     }
   }
 
   void _generatePDF() async {
     if (_formKey.currentState!.validate()) {
-      try {
-        final item = OrderItem(
-          particular: _selectedType ?? 'N/A',
-          width: _widthController.text,
-          col6: '-',
-          col7: '-',
-          col8: '-',
-          col9: '-',
-          col10: '-',
-          totalPTon: _tnController.text,
-          totalWTon: '-',
-          pricePerTon: _rateController.text,
+      int length = int.tryParse(_lengthController.text) ?? 0;
+      int pcs = int.tryParse(_pcsController.text) ?? 0;
+
+      if (length <= 0 || pcs <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Length and PCS must be greater than 0'),
+            backgroundColor: Colors.red,
+          ),
         );
+        return;
+      }
 
-        final itemsForPDF = List<OrderItem>.from(_orderItems)..add(item);
+      // Create OrderItem for current form
+      final currentItem = OrderItem(
+        particular: _selectedType ?? 'N/A',
+        width: _widthController.text.isNotEmpty ? _widthController.text : '-',
+        lengthPcs: {length: pcs},
+        totalPTon: _tnController.text.isNotEmpty ? _tnController.text : '0',
+        totalWTon: '-', // placeholder
+        pricePerTon: _rateController.text.isNotEmpty ? _rateController.text : '0',
+      );
 
-        double totalBill = 0.0;
-        for (var orderItem in itemsForPDF) {
-          final tons = double.tryParse(orderItem.totalPTon) ?? 0.0;
-          final rate = double.tryParse(orderItem.pricePerTon) ?? 0.0;
-          totalBill += tons * rate;
-        }
+      // Combine current form with previous orders
+      final itemsForPDF = List<OrderItem>.from(_orderItems)..add(currentItem);
 
+      // Calculate total bill
+      double totalBill = 0.0;
+      for (var item in itemsForPDF) {
+        final tons = double.tryParse(item.totalPTon) ?? 0.0;
+        final rate = double.tryParse(item.pricePerTon) ?? 0.0;
+        totalBill += tons * rate;
+      }
+
+      try {
         await PDFGeneratorService.generateDeliveryOrderPDF(
           date: DateTime.now().toString().split(' ')[0],
-          customerName: _supplierPartyController.text,
-          address: _addressController.text,
+          customerName: _supplierPartyController.text.isNotEmpty
+              ? _supplierPartyController.text
+              : 'N/A',
+          address: _addressController.text.isNotEmpty
+              ? _addressController.text
+              : '-',
           items: itemsForPDF,
           paymentDate: DateTime.now().toString().split(' ')[0],
           paymentAmount: '0',
@@ -327,6 +388,7 @@ class DashboardPageState extends State<DashboardPage> {
           ),
         );
 
+        // Clear everything after printing
         setState(() {
           _orderItems.clear();
           _thicknessController.clear();
@@ -339,14 +401,18 @@ class DashboardPageState extends State<DashboardPage> {
           _selectedColor = null;
           _selectedType = null;
         });
-
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error generating PDF: $e'), backgroundColor: Colors.red[700]),
+          SnackBar(
+            content: Text('Error generating PDF: $e'),
+            backgroundColor: Colors.red[700],
+          ),
         );
       }
     }
   }
+
+
 
   @override
   void dispose() {

@@ -5,11 +5,13 @@ Widget buildTextField({
   required String label,
   TextInputType keyboardType = TextInputType.text,
   int maxLines = 1,
+  bool readOnly = false,
 }) {
   return TextFormField(
     controller: controller,
     keyboardType: keyboardType,
     maxLines: maxLines,
+    readOnly: readOnly,
     decoration: InputDecoration(
       labelText: label,
       filled: true,
