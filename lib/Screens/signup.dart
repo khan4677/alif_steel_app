@@ -316,6 +316,8 @@ class _SignUpPageState extends State<SignUpPage> {
                         'created_at': FieldValue.serverTimestamp(),
                       });
 
+                      if (!mounted) return;
+
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Account created successfully!'),
@@ -323,6 +325,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         ),
                       );
                       Navigator.pushReplacementNamed(context, '/dashboard');
+
                     } on FirebaseAuthException catch (e) {
                       String message = 'Sign up failed!';
                       if (e.code == 'weak-password') {

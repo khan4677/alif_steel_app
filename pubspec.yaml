@@ -31,11 +31,11 @@ dependencies:
   flutter:
     sdk: flutter
   # Firebase core
-  firebase_core: ^3.15.1
+  firebase_core: ^3.15.2
   # Firebase Auth (if you use authentication)
-  firebase_auth: ^5.6.2
+  firebase_auth: ^5.7.0
   # Cloud Firestore (if you use Firestore)
-  cloud_firestore: ^5.6.11
+  cloud_firestore: ^5.6.12
   pdf: ^3.10.4
   printing: ^5.11.0
   path_provider: ^2.0.15
@@ -46,6 +46,7 @@ dependencies:
   cupertino_icons: ^1.0.8
 
 dev_dependencies:
+  flutter_native_splash: ^2.3.9
   flutter_test:
     sdk: flutter
 
@@ -100,3 +101,9 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_native_splash:
+#  color: "#2196F3"
+  image: assets/images/1111.png
+  android: true
+  ios: true

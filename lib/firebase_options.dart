@@ -41,48 +41,48 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDWsX0e6uePla04L_rkUJkcRMOvzKFtBBY',
-    appId: '1:412683657587:web:adf9d3d684117a0ed52506',
-    messagingSenderId: '412683657587',
-    projectId: 'alifsteelapp',
-    authDomain: 'alifsteelapp.firebaseapp.com',
-    storageBucket: 'alifsteelapp.firebasestorage.app',
-    measurementId: 'G-KS2KHJE8KT',
+    apiKey: 'AIzaSyD0ak2dZv0uXjdY4HcnHLOGwJPC5RFMDUQ',
+    appId: '1:786004134673:web:cb97e30475556c02245ab0',
+    messagingSenderId: '786004134673',
+    projectId: 'alifsteelapp-dc142',
+    authDomain: 'alifsteelapp-dc142.firebaseapp.com',
+    storageBucket: 'alifsteelapp-dc142.firebasestorage.app',
+    measurementId: 'G-1LGK3KWKBQ',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCtSM2de3h6YelW8ohHBMiZHWpIrSAHFek',
-    appId: '1:412683657587:android:913eb20632db5ba4d52506',
-    messagingSenderId: '412683657587',
-    projectId: 'alifsteelapp',
-    storageBucket: 'alifsteelapp.firebasestorage.app',
+    apiKey: 'AIzaSyBM9nRWS7tneV2PN-wQYxHkreqDUZAqJCc',
+    appId: '1:786004134673:android:251dd18ef6bdf21e245ab0',
+    messagingSenderId: '786004134673',
+    projectId: 'alifsteelapp-dc142',
+    storageBucket: 'alifsteelapp-dc142.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyAn8aD7QKwpArpZvekOOEE4lO-b6T3iDeo',
-    appId: '1:412683657587:ios:83e2766264123161d52506',
-    messagingSenderId: '412683657587',
-    projectId: 'alifsteelapp',
-    storageBucket: 'alifsteelapp.firebasestorage.app',
+    apiKey: 'AIzaSyCowPM9xaPbQS8DxobkqYI0nGJv_bARkT0',
+    appId: '1:786004134673:ios:31c544f171523a9a245ab0',
+    messagingSenderId: '786004134673',
+    projectId: 'alifsteelapp-dc142',
+    storageBucket: 'alifsteelapp-dc142.firebasestorage.app',
     iosBundleId: 'com.example.alifSteelApp',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyAn8aD7QKwpArpZvekOOEE4lO-b6T3iDeo',
-    appId: '1:412683657587:ios:83e2766264123161d52506',
-    messagingSenderId: '412683657587',
-    projectId: 'alifsteelapp',
-    storageBucket: 'alifsteelapp.firebasestorage.app',
+    apiKey: 'AIzaSyCowPM9xaPbQS8DxobkqYI0nGJv_bARkT0',
+    appId: '1:786004134673:ios:31c544f171523a9a245ab0',
+    messagingSenderId: '786004134673',
+    projectId: 'alifsteelapp-dc142',
+    storageBucket: 'alifsteelapp-dc142.firebasestorage.app',
     iosBundleId: 'com.example.alifSteelApp',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyDWsX0e6uePla04L_rkUJkcRMOvzKFtBBY',
-    appId: '1:412683657587:web:70051dfc4980648bd52506',
-    messagingSenderId: '412683657587',
-    projectId: 'alifsteelapp',
-    authDomain: 'alifsteelapp.firebaseapp.com',
-    storageBucket: 'alifsteelapp.firebasestorage.app',
-    measurementId: 'G-0JDBDEFC0N',
+    apiKey: 'AIzaSyD0ak2dZv0uXjdY4HcnHLOGwJPC5RFMDUQ',
+    appId: '1:786004134673:web:ddb421291e5f264b245ab0',
+    messagingSenderId: '786004134673',
+    projectId: 'alifsteelapp-dc142',
+    authDomain: 'alifsteelapp-dc142.firebaseapp.com',
+    storageBucket: 'alifsteelapp-dc142.firebasestorage.app',
+    measurementId: 'G-GXHLQ0JFGJ',
   );
 }
