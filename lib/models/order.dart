@@ -1,12 +1,12 @@
 class OrderItem {
-  final String particular;      // e.g., CHERRY, BORO, etc.
-  final String width;           // Width in mm/inch
-  final String thickness;       // Thickness in mm
-  final String lengthValue;     // Length in ft
-  final Map<int, int> lengthPcs; // {length: pcs}
-  final String totalPTon;       // Tons
-  final String totalWTon;       // Weight Tons (placeholder)
-  final String pricePerTon;     // Rate per ton
+  final String particular;
+  final String width;
+  final String thickness;
+  final String lengthValue;
+  final Map<int, int> lengthPcs;
+  final String totalPTon;
+  final String totalWTon;
+  final String pricePerTon;
 
   OrderItem({
     required this.particular,
@@ -19,7 +19,6 @@ class OrderItem {
     required this.pricePerTon,
   });
 
-  // Convert Firestore Map -> OrderItem
   factory OrderItem.fromMap(Map<String, dynamic> map) {
     return OrderItem(
       particular: map['particular'] ?? 'N/A',
@@ -33,7 +32,6 @@ class OrderItem {
     );
   }
 
-  // Convert OrderItem -> Map (for saving to Firestore)
   Map<String, dynamic> toMap() {
     return {
       'particular': particular,
@@ -50,7 +48,7 @@ class OrderItem {
 
 class Order {
   String id;
-  String customerName;
+  String clientName; // <-- changed to clientName
   String address;
   String phone;
   String date;
@@ -62,7 +60,7 @@ class Order {
 
   Order({
     required this.id,
-    required this.customerName,
+    required this.clientName,
     required this.address,
     required this.phone,
     required this.date,
@@ -74,7 +72,7 @@ class Order {
   });
 
   Map<String, dynamic> toMap() => {
-    'customerName': customerName,
+    'client_name': clientName, // <- Firestore key
     'address': address,
     'phone': phone,
     'date': date,
@@ -87,7 +85,7 @@ class Order {
 
   factory Order.fromMap(String id, Map<String, dynamic> map) => Order(
     id: id,
-    customerName: map['customerName'] ?? '',
+    clientName: map['client_name'] ?? '',
     address: map['address'] ?? '',
     phone: map['phone'] ?? '',
     date: map['date'] ?? '',

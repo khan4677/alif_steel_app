@@ -35,7 +35,7 @@ class OrderListPage extends StatelessWidget {
               );
 
               return ListTile(
-                title: Text(order.customerName),
+                title: Text(order.clientName),
                 subtitle: Text("${order.date} | Total: ${order.totalBill}"),
                 onTap: () {
                   Navigator.push(

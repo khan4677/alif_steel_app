@@ -4,9 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login.dart';
 import '../widgets.dart';
-import '../Services/pdf_generator.dart';
 import '../Screens/order_page.dart';
-import '../models/order.dart'; // <-- Import OrderItem
+import '../models/order.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -243,7 +242,6 @@ class DashboardPageState extends State<DashboardPage> {
                       child: ElevatedButton(
                         onPressed: () async {
                           await _saveOrderToFirestore(); // Save all rows to Firestore
-                          await _generatePDF();           // Then generate PDF
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue[700],
@@ -251,18 +249,6 @@ class DashboardPageState extends State<DashboardPage> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
                         child: const Text('Submit', style: TextStyle(color: Colors.white,fontSize: 16,fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _generatePDF,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green[700],
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
-                        child: const Text('Print',style: TextStyle(color: Colors.white,fontSize: 16,fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],
@@ -321,7 +307,7 @@ class DashboardPageState extends State<DashboardPage> {
       setState(() {
         _orderItems.add(item);
 
-        // Clear form for next entry
+        // CLEAR only calculation fields
         _thicknessController.clear();
         _widthController.clear();
         _lengthController.clear();
@@ -342,21 +328,7 @@ class DashboardPageState extends State<DashboardPage> {
     }
   }
 
-
-  Future<void> _generatePDF() async {
-    if (_orderItems.isEmpty &&
-        (_thicknessController.text.isEmpty ||
-            _pcsController.text.isEmpty ||
-            _tnController.text.isEmpty)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No items to generate PDF. Add at least one order.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
+  Future<void> _saveOrderToFirestore() async {
     // Add current row if user hasn't clicked "Add Another Order"
     final int length = int.tryParse(_lengthController.text) ?? 0;
     final int pcs = int.tryParse(_pcsController.text) ?? 0;
@@ -364,13 +336,9 @@ class DashboardPageState extends State<DashboardPage> {
     if (length > 0 && pcs > 0) {
       final currentItem = OrderItem(
         particular: _selectedType ?? 'N/A',
-        thickness: _thicknessController.text.isNotEmpty
-            ? _thicknessController.text
-            : '0',
+        thickness: _thicknessController.text.isNotEmpty ? _thicknessController.text : '0',
         width: _widthController.text.isNotEmpty ? _widthController.text : '-',
-        lengthValue: _lengthController.text.isNotEmpty
-            ? _lengthController.text
-            : '0',
+        lengthValue: _lengthController.text.isNotEmpty ? _lengthController.text : '0',
         lengthPcs: {length: pcs},
         totalPTon: _tnController.text.isNotEmpty ? _tnController.text : '0',
         totalWTon: '-', // placeholder
@@ -380,61 +348,6 @@ class DashboardPageState extends State<DashboardPage> {
       _orderItems.add(currentItem);
     }
 
-    double totalBill = 0.0;
-    for (var item in _orderItems) {
-      final tons = double.tryParse(item.totalPTon) ?? 0.0;
-      final rate = double.tryParse(item.pricePerTon) ?? 0.0;
-      totalBill += tons * rate;
-    }
-
-    try {
-      await PDFGeneratorService.generateDeliveryOrderPDF(
-        date: DateTime.now().toString().split(' ')[0],
-        customerName: _supplierPartyController.text.isNotEmpty
-            ? _supplierPartyController.text
-            : 'N/A',
-        address: _addressController.text.isNotEmpty
-            ? _addressController.text
-            : '-',
-        items: _orderItems,
-        paymentDate: DateTime.now().toString().split(' ')[0],
-        paymentAmount: '0',
-        outstanding: totalBill.toStringAsFixed(2),
-        totalBill: totalBill.toStringAsFixed(2),
-      );
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              'PDF saved to Downloads folder! (${_orderItems.length} items)'),
-          backgroundColor: Colors.green[700],
-        ),
-      );
-
-      // Clear form after PDF generation
-      setState(() {
-        _orderItems.clear();
-        _thicknessController.clear();
-        _widthController.clear();
-        _lengthController.clear();
-        _pcsController.clear();
-        _tnController.clear();
-        _rateController.clear();
-        _discountController.clear();
-        _selectedColor = null;
-        _selectedType = null;
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error generating PDF: $e'),
-          backgroundColor: Colors.red[700],
-        ),
-      );
-    }
-  }
-
-  Future<void> _saveOrderToFirestore() async {
     if (_orderItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -446,8 +359,21 @@ class DashboardPageState extends State<DashboardPage> {
     }
 
     final orderId = "ORD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}";
+    final orderRows = _orderItems.map((item) {
+      // Convert lengthPcs map to <String, String>
+      final lengthPcsStr = item.lengthPcs.map((k, v) => MapEntry(k.toString(), v.toString()));
+      return {
+        'particular': item.particular,
+        'width': item.width,
+        'thickness': item.thickness,
+        'lengthValue': item.lengthValue,
+        'lengthPcs': lengthPcsStr,
+        'totalPTon': item.totalPTon,
+        'totalWTon': item.totalWTon,
+        'pricePerTon': item.pricePerTon,
+      };
+    }).toList();
 
-    final orderRows = _orderItems.map((item) => item.toMap()).toList();
 
     double grandTotal = 0.0;
     for (var item in _orderItems) {
@@ -456,14 +382,12 @@ class DashboardPageState extends State<DashboardPage> {
       grandTotal += tons * rate;
     }
 
+    // Save everything from dashboard
     final orderData = {
-      'order_id': orderId,
-      'client_name': _supplierPartyController.text.isNotEmpty
-          ? _supplierPartyController.text
-          : 'N/A',
-      'address': _addressController.text.isNotEmpty
-          ? _addressController.text
-          : '-',
+      'sl_no': _slNoController.text.isNotEmpty ? _slNoController.text : '-',
+      'client_name': _supplierPartyController.text.isNotEmpty ? _supplierPartyController.text : 'N/A',
+      'address': _addressController.text.isNotEmpty ? _addressController.text : '-',
+      'phone': _phoneController.text.isNotEmpty ? _phoneController.text : '-',
       'date': DateTime.now().toString().split(' ')[0],
       'rows': orderRows,
       'total_amount': grandTotal,
@@ -480,8 +404,15 @@ class DashboardPageState extends State<DashboardPage> {
         ),
       );
 
+      // CLEAR ALL FIELDS after submit
       setState(() {
         _orderItems.clear();
+
+        // Clear all text controllers
+        _slNoController.clear();
+        _supplierPartyController.clear();
+        _addressController.clear();
+        _phoneController.clear();
         _thicknessController.clear();
         _widthController.clear();
         _lengthController.clear();
@@ -489,9 +420,16 @@ class DashboardPageState extends State<DashboardPage> {
         _tnController.clear();
         _rateController.clear();
         _discountController.clear();
+        _paymentDateController.clear();
+        _paymentAmountController.clear();
+        _outstandingController.clear();
+        _totalBillController.clear();
+
+        // Reset dropdowns
         _selectedColor = null;
         _selectedType = null;
       });
+
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -500,6 +438,7 @@ class DashboardPageState extends State<DashboardPage> {
         ),
       );
     }
+
   }
 
 
