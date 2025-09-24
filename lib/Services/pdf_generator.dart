@@ -10,7 +10,7 @@ import '../models/order.dart';
 class PDFGeneratorService {
   static Future<void> generateDeliveryOrderPDF({
     required String date,
-    required String customerName,
+    required String clientName,
     required String address,
     required List<OrderItem> items,
     required String paymentDate,
@@ -47,7 +47,7 @@ class PDFGeneratorService {
                   children: [
                     pw.Text('Date: $date', style: pw.TextStyle(fontSize: 14)),
                     pw.SizedBox(height: 5),
-                    pw.Text('Customer Name: $customerName', style: pw.TextStyle(fontSize: 14)),
+                    pw.Text('Customer Name: $clientName', style: pw.TextStyle(fontSize: 14)),
                     pw.SizedBox(height: 5),
                     pw.Text('Address: $address', style: pw.TextStyle(fontSize: 14)),
                   ],
@@ -84,16 +84,16 @@ class PDFGeneratorService {
                     // Data rows
                     ...items.map((item) {
                       int pcs = item.lengthPcs.entries.first.value;
-                      double tons = double.tryParse(item.totalPTon) ?? 0.0;
-                      double rate = double.tryParse(item.pricePerTon) ?? 0.0;
+                      double tons = double.tryParse(item.totalPTon.toString()) ?? 0.0;
+                      double rate = double.tryParse(item.pricePerTon.toString()) ?? 0.0;
                       double rowTotal = tons * rate;
 
                       return pw.TableRow(
                         children: [
-                          _buildTableCell(item.thickness),
-                          _buildTableCell(item.lengthValue),
-                          _buildTableCell(item.particular),
-                          _buildTableCell(item.width),
+                          _buildTableCell(item.thickness.toString()),
+                          _buildTableCell(item.lengthValue.toString()),
+                          _buildTableCell(item.particular.toString()),
+                          _buildTableCell(item.width.toString()),
                           _buildTableCell(pcs.toString()),
                           _buildTableCell(tons.toStringAsFixed(2)),
                           _buildTableCell(rate.toStringAsFixed(2)),
@@ -111,16 +111,23 @@ class PDFGeneratorService {
                         _buildTableCell('', isHeader: true),
                         _buildTableCell('', isHeader: true),
                         _buildTableCell(
-                          items.fold<double>(0.0, (sum, i) => sum + (double.tryParse(i.totalPTon) ?? 0)),
+                          items.fold<double>(
+                              0.0,
+                                  (sum, i) =>
+                              sum + (double.tryParse(i.totalPTon.toString()) ?? 0)),
                           isHeader: true,
                         ),
                         _buildTableCell('', isHeader: true),
                         _buildTableCell(
-                          items.fold<double>(
+                          items
+                              .fold<double>(
                             0.0,
                                 (sum, i) =>
-                            sum + ((double.tryParse(i.totalPTon) ?? 0) * (double.tryParse(i.pricePerTon) ?? 0)),
-                          ).toStringAsFixed(2),
+                            sum +
+                                ((double.tryParse(i.totalPTon.toString()) ?? 0) *
+                                    (double.tryParse(i.pricePerTon.toString()) ?? 0)),
+                          )
+                              .toStringAsFixed(2),
                           isHeader: true,
                         ),
                       ],
@@ -132,11 +139,13 @@ class PDFGeneratorService {
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text('Payment $paymentDate - PBL - $paymentAmount/-', style: pw.TextStyle(fontSize: 14)),
+                    pw.Text('Payment $paymentDate - PBL - ${paymentAmount.toString()}/-',
+                        style: pw.TextStyle(fontSize: 14)),
                     pw.SizedBox(height: 5),
-                    pw.Text('Outstanding: $outstanding/-', style: pw.TextStyle(fontSize: 14, font: font)),
+                    pw.Text('Outstanding: ${outstanding.toString()}/-', style: pw.TextStyle(fontSize: 14, font: font)),
                     pw.SizedBox(height: 5),
-                    pw.Text('Total Bill: $totalBill/-', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                    pw.Text('Total Bill: ${totalBill.toString()}/-',
+                        style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
                     pw.SizedBox(height: 10),
                     pw.Text(
                       'বি:দ্র - মাল তোলার সময় ডেলিভারি পেপার নিয়ে আসবেন (গ্যারান্টি মাল নয়)',

@@ -25,7 +25,8 @@ class OrderItem {
       width: map['width'] ?? '-',
       thickness: map['thickness'] ?? '0',
       lengthValue: map['lengthValue'] ?? '0',
-      lengthPcs: Map<int, int>.from(map['lengthPcs'] ?? {}),
+      lengthPcs: (map['lengthPcs'] as Map<dynamic, dynamic>? ?? {})
+          .map<int, int>((k, v) => MapEntry(int.tryParse(k.toString()) ?? 0, int.tryParse(v.toString()) ?? 0)),
       totalPTon: map['totalPTon'] ?? '0',
       totalWTon: map['totalWTon'] ?? '-',
       pricePerTon: map['pricePerTon'] ?? '0',
