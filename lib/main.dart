@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
       home: AuthWrapper(), // Changed from LoginPage() to AuthWrapper()
       routes: {
         '/login': (context) => LoginPage(),
-        '/dashboard': (context) => DashboardPage(), // Add this route
+        '/dashboard': (context) => DashboardPage(),
       },
       debugShowCheckedModeBanner: false,
     );
