@@ -1,55 +1,86 @@
+// lib/models/order.dart
+
 class OrderItem {
-  final String particular;
+  final String color;       // split from "particular"
+  final String pType;       // split from "particular"
   final String width;
   final String thickness;
-  final String lengthValue;
-  final Map<int, int> lengthPcs;
-  final String totalPTon;
-  final String totalWTon;
-  final String pricePerTon;
+
+  // Dynamic lengths: { "6": {"ton": "1", "pcs": "282"}, "7": {"ton": "1", "pcs": "241"} }
+  Map<String, Map<String, String>> lengths;
+
+  String totalPTon;
+  String totalPcs;
+  String amount;  // replaces totalWTon
 
   OrderItem({
-    required this.particular,
+    required this.color,
+    required this.pType,
     required this.width,
     required this.thickness,
-    required this.lengthValue,
-    required this.lengthPcs,
+    required this.lengths,
     required this.totalPTon,
-    required this.totalWTon,
-    required this.pricePerTon,
+    required this.totalPcs,
+    required this.amount,
   });
 
   factory OrderItem.fromMap(Map<String, dynamic> map) {
+    // Prepare lengths map
+    final Map<String, Map<String, String>> lengthsMap = {};
+
+    // 1️⃣ New format: 'lengths' exists
+    if (map['lengths'] != null && map['lengths'] is Map) {
+      (map['lengths'] as Map).forEach((key, value) {
+        if (value is Map) {
+          lengthsMap[key.toString()] = Map<String, String>.from(value);
+        }
+      });
+    }
+    // 2️⃣ Old format: 'lengthValue' + 'lengthPcs'
+    else if (map['lengthValue'] != null && map['lengthPcs'] != null) {
+      final lengthVal = map['lengthValue'].toString();
+      final pcs = map['lengthPcs'];
+      if (pcs is Map) {
+        lengthsMap[lengthVal] = pcs.map((k, v) => MapEntry(k.toString(), v.toString()));
+      } else if (pcs is String || pcs is int || pcs is double) {
+        // Single PCS value
+        lengthsMap[lengthVal] = {
+          'pcs': pcs.toString(),
+          'ton': map['totalPTon']?.toString() ?? '0',
+        };
+      }
+    }
+
     return OrderItem(
-      particular: map['particular'] ?? 'N/A',
+      color: map['color'] ?? 'N/A',
+      pType: map['pType'] ?? map['particular'] ?? 'N/A',
       width: map['width'] ?? '-',
       thickness: map['thickness'] ?? '0',
-      lengthValue: map['lengthValue'] ?? '0',
-      lengthPcs: (map['lengthPcs'] as Map<dynamic, dynamic>? ?? {})
-          .map<int, int>((k, v) => MapEntry(int.tryParse(k.toString()) ?? 0, int.tryParse(v.toString()) ?? 0)),
+      lengths: lengthsMap,
       totalPTon: map['totalPTon'] ?? '0',
-      totalWTon: map['totalWTon'] ?? '-',
-      pricePerTon: map['pricePerTon'] ?? '0',
+      totalPcs: map['totalPcs'] ??
+          lengthsMap.values.map((v) => int.tryParse(v['pcs'] ?? '0') ?? 0).fold(0, (a, b) => a + b).toString(),
+      amount: map['amount'] ?? map['totalWTon'] ?? '0',
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
-      'particular': particular,
+      'color': color,
+      'pType': pType,
       'width': width,
       'thickness': thickness,
-      'lengthValue': lengthValue,
-      'lengthPcs': lengthPcs,
+      'lengths': lengths,
       'totalPTon': totalPTon,
-      'totalWTon': totalWTon,
-      'pricePerTon': pricePerTon,
+      'totalPcs': totalPcs,
+      'amount': amount,
     };
   }
 }
 
 class Order {
   String id;
-  String clientName; // <-- changed to clientName
+  String clientName;
   String address;
   String phone;
   String date;
@@ -73,7 +104,7 @@ class Order {
   });
 
   Map<String, dynamic> toMap() => {
-    'client_name': clientName, // <- Firestore key
+    'client_name': clientName,
     'address': address,
     'phone': phone,
     'date': date,

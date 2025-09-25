@@ -276,76 +276,92 @@ class DashboardPageState extends State<DashboardPage> {
   }
 
   void _addAnotherOrder() {
-    if (_formKey.currentState!.validate()) {
-      final thickness = _thicknessController.text.isNotEmpty ? _thicknessController.text : '0';
-      final lengthVal = _lengthController.text.isNotEmpty ? _lengthController.text : '0';
-      final pcs = int.tryParse(_pcsController.text) ?? 0;
-      final tn = _tnController.text.isNotEmpty ? _tnController.text : '0';
-      final rate = _rateController.text.isNotEmpty ? _rateController.text : '0';
+    if (!_formKey.currentState!.validate()) return;
 
-      if (double.tryParse(lengthVal)! <= 0 || pcs <= 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Length and PCS must be greater than 0'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
+    final thickness = _thicknessController.text.isNotEmpty ? _thicknessController.text : '0';
+    final width = _widthController.text.isNotEmpty ? _widthController.text : '-';
+    final lengthVal = _lengthController.text.isNotEmpty ? _lengthController.text : '0';
+    final pcs = int.tryParse(_pcsController.text) ?? 0;
+    final tn = _tnController.text.isNotEmpty ? _tnController.text : '0';
+    final rate = double.tryParse(_rateController.text) ?? 0.0;
 
-      final item = OrderItem(
-        particular: _selectedType ?? 'N/A',
-        width: _widthController.text.isNotEmpty ? _widthController.text : '-',
-        thickness: thickness,
-        lengthValue: lengthVal,
-        lengthPcs: {int.parse(lengthVal): pcs},
-        totalPTon: tn,
-        totalWTon: '-', // placeholder
-        pricePerTon: rate,
-      );
-
-      setState(() {
-        _orderItems.add(item);
-
-        // CLEAR only calculation fields
-        _thicknessController.clear();
-        _widthController.clear();
-        _lengthController.clear();
-        _pcsController.clear();
-        _tnController.clear();
-        _rateController.clear();
-        _discountController.clear();
-        _selectedColor = null;
-        _selectedType = null;
-      });
-
+    if (double.tryParse(lengthVal)! <= 0 || pcs <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Item added. Fill next order.'),
-          backgroundColor: Colors.orange,
+          content: Text('Length and PCS must be greater than 0'),
+          backgroundColor: Colors.red,
         ),
       );
+      return;
     }
+
+    // Build lengths map for this order item
+    final lengthsMap = {
+      lengthVal: {
+        'ton': tn,
+        'pcs': pcs.toString(),
+      }
+    };
+
+    final amount = (double.tryParse(tn) ?? 0.0) * rate;
+
+    final item = OrderItem(
+      color: _selectedColor ?? 'N/A',
+      pType: _selectedType ?? 'N/A',
+      width: width,
+      thickness: thickness,
+      lengths: lengthsMap,
+      totalPTon: tn,
+      totalPcs: pcs.toString(),
+      amount: amount.toStringAsFixed(2),
+    );
+
+    setState(() {
+      _orderItems.add(item);
+
+      // Clear input fields
+      _thicknessController.clear();
+      _widthController.clear();
+      _lengthController.clear();
+      _pcsController.clear();
+      _tnController.clear();
+      _rateController.clear();
+      _discountController.clear();
+      _selectedColor = null;
+      _selectedType = null;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Item added. Fill next order.'),
+        backgroundColor: Colors.orange,
+      ),
+    );
   }
 
   Future<void> _saveOrderToFirestore() async {
-    // Add current row if user hasn't clicked "Add Another Order"
-    final int length = int.tryParse(_lengthController.text) ?? 0;
-    final int pcs = int.tryParse(_pcsController.text) ?? 0;
+    // Add current input if not already added
+    final lengthVal = _lengthController.text.isNotEmpty ? _lengthController.text : '0';
+    final pcs = int.tryParse(_pcsController.text) ?? 0;
+    final tn = _tnController.text.isNotEmpty ? _tnController.text : '0';
+    final rate = double.tryParse(_rateController.text) ?? 0.0;
 
-    if (length > 0 && pcs > 0) {
-      final currentItem = OrderItem(
-        particular: _selectedType ?? 'N/A',
-        thickness: _thicknessController.text.isNotEmpty ? _thicknessController.text : '0',
+    if (double.tryParse(lengthVal)! > 0 && pcs > 0) {
+      final lengthsMap = {
+        lengthVal: {'ton': tn, 'pcs': pcs.toString()}
+      };
+      final amount = (double.tryParse(tn) ?? 0.0) * rate;
+
+      _orderItems.add(OrderItem(
+        color: _selectedColor ?? 'N/A',
+        pType: _selectedType ?? 'N/A',
         width: _widthController.text.isNotEmpty ? _widthController.text : '-',
-        lengthValue: _lengthController.text.isNotEmpty ? _lengthController.text : '0',
-        lengthPcs: {length: pcs},
-        totalPTon: _tnController.text.isNotEmpty ? _tnController.text : '0',
-        totalWTon: '-', // placeholder
-        pricePerTon: _rateController.text.isNotEmpty ? _rateController.text : '0',
-      );
-
-      _orderItems.add(currentItem);
+        thickness: _thicknessController.text.isNotEmpty ? _thicknessController.text : '0',
+        lengths: lengthsMap,
+        totalPTon: tn,
+        totalPcs: pcs.toString(),
+        amount: amount.toStringAsFixed(2),
+      ));
     }
 
     if (_orderItems.isEmpty) {
@@ -358,31 +374,13 @@ class DashboardPageState extends State<DashboardPage> {
       return;
     }
 
-    final orderId = "ORD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}";
-    final orderRows = _orderItems.map((item) {
-      // Convert lengthPcs map to <String, String>
-      final lengthPcsStr = item.lengthPcs.map((k, v) => MapEntry(k.toString(), v.toString()));
-      return {
-        'particular': item.particular,
-        'width': item.width,
-        'thickness': item.thickness,
-        'lengthValue': item.lengthValue,
-        'lengthPcs': lengthPcsStr,
-        'totalPTon': item.totalPTon,
-        'totalWTon': item.totalWTon,
-        'pricePerTon': item.pricePerTon,
-      };
-    }).toList();
+    // Convert _orderItems to Firestore-friendly map
+    final orderRows = _orderItems.map((item) => item.toMap()).toList();
 
+    // Calculate grand total
+    final grandTotal = _orderItems.fold<double>(
+        0.0, (sum, item) => sum + (double.tryParse(item.amount) ?? 0.0));
 
-    double grandTotal = 0.0;
-    for (var item in _orderItems) {
-      final tons = double.tryParse(item.totalPTon) ?? 0;
-      final rate = double.tryParse(item.pricePerTon) ?? 0;
-      grandTotal += tons * rate;
-    }
-
-    // Save everything from dashboard
     final orderData = {
       'sl_no': _slNoController.text.isNotEmpty ? _slNoController.text : '-',
       'client_name': _supplierPartyController.text.isNotEmpty ? _supplierPartyController.text : 'N/A',
@@ -404,11 +402,9 @@ class DashboardPageState extends State<DashboardPage> {
         ),
       );
 
-      // CLEAR ALL FIELDS after submit
+      // Clear all input and _orderItems
       setState(() {
         _orderItems.clear();
-
-        // Clear all text controllers
         _slNoController.clear();
         _supplierPartyController.clear();
         _addressController.clear();
@@ -424,12 +420,9 @@ class DashboardPageState extends State<DashboardPage> {
         _paymentAmountController.clear();
         _outstandingController.clear();
         _totalBillController.clear();
-
-        // Reset dropdowns
         _selectedColor = null;
         _selectedType = null;
       });
-
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -438,8 +431,8 @@ class DashboardPageState extends State<DashboardPage> {
         ),
       );
     }
-
   }
+
 
 
   @override

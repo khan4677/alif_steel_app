@@ -13,7 +13,7 @@ class OrderListPage extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('orders')
-            .orderBy('date', descending: true)
+            .orderBy('created_at', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
@@ -29,22 +29,71 @@ class OrderListPage extends StatelessWidget {
           return ListView.builder(
             itemCount: docs.length,
             itemBuilder: (context, index) {
-              final order = models.Order.fromMap(
-                docs[index].id,
-                docs[index].data() as Map<String, dynamic>,
-              );
+              final data = docs[index].data() as Map<String, dynamic>;
+              final orderId = docs[index].id;
 
-              return ListTile(
-                title: Text(order.clientName),
-                subtitle: Text("${order.date} | Total: ${order.totalBill}"),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => OrderDetailsPage(orderId: order.id),
-                    ),
-                  );
-                },
+              // Safe string conversion
+              final clientName = data['client_name']?.toString() ?? 'N/A';
+              final dateStr = data['date']?.toString() ?? '-';
+              final totalAmount = data['total_amount']?.toString() ?? '0';
+
+              return Card(
+                margin: const EdgeInsets.all(8),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Client Name: $clientName", style: const TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 6),
+                      Text("Date: $dateStr"),
+                      const SizedBox(height: 6),
+                      Text("Total Amount: $totalAmount"),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Open Button
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => OrderDetailsPage(
+                                    orderId: orderId,
+                                    orderData: data, // pass orderData here
+                                  ),
+                                ),
+                              );
+                            },
+                            style: TextButton.styleFrom(foregroundColor: Colors.blue),
+                            child: const Text("Open"),
+                          ),
+                          // Delete Button
+                          TextButton(
+                            onPressed: () async {
+                              try {
+                                await FirebaseFirestore.instance
+                                    .collection('orders')
+                                    .doc(orderId)
+                                    .delete();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Order deleted successfully')),
+                                );
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Error deleting order: $e')),
+                                );
+                              }
+                            },
+                            style: TextButton.styleFrom(foregroundColor: Colors.red),
+                            child: const Text("Delete"),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               );
             },
           );

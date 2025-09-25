@@ -1,8 +1,9 @@
-// Screens/order_page.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/order.dart' as models;
+import '../models/order.dart';
 import '../Services/pdf_generator.dart';
+import 'order_details_page.dart';
+
 class OrderPage extends StatelessWidget {
   const OrderPage({super.key});
 
@@ -16,18 +17,12 @@ class OrderPage extends StatelessWidget {
             .orderBy('created_at', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return const Center(child: Text("Error loading orders"));
-          }
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.hasError) return const Center(child: Text("Error loading orders"));
+          if (snapshot.connectionState == ConnectionState.waiting)
             return const Center(child: CircularProgressIndicator());
-          }
 
           final orders = snapshot.data!.docs;
-
-          if (orders.isEmpty) {
-            return const Center(child: Text("No orders yet"));
-          }
+          if (orders.isEmpty) return const Center(child: Text("No orders yet"));
 
           return ListView.builder(
             itemCount: orders.length,
@@ -35,15 +30,15 @@ class OrderPage extends StatelessWidget {
               final data = orders[index].data() as Map<String, dynamic>;
               final orderId = orders[index].id;
 
-              // Safe string conversion
-              final slNo = data['sl_no']?.toString() ?? orderId;
               final clientName = data['client_name']?.toString() ?? 'N/A';
               final dateStr = data['date']?.toString() ?? '-';
+              final totalBill = data['total_amount']?.toString() ?? '0';
               final address = data['address']?.toString() ?? '-';
               final paymentDate = data['payment_date']?.toString() ?? '';
               final paymentAmount = data['payment_amount']?.toString() ?? '';
               final outstanding = data['outstanding']?.toString() ?? '';
-              final totalBill = data['total_amount']?.toString() ?? '0';
+
+              final rows = data['rows'] as List<dynamic>? ?? [];
 
               return Card(
                 margin: const EdgeInsets.all(8),
@@ -52,11 +47,54 @@ class OrderPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("SL.No: $slNo", style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text("Client: $clientName", style: const TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 6),
-                      Text("Client Name: $clientName"),
-                      const SizedBox(height: 6),
-                      Text("Date: $dateStr"),
+                      Text("Date: $dateStr | Total: $totalBill"),
+                      const SizedBox(height: 12),
+
+                      // ===== PCS / Length Display =====
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: rows.map((row) {
+                          final rowMap = Map<String, dynamic>.from(row);
+                          final lengths = (rowMap['lengths'] as Map? ?? {}).map((k, v) => MapEntry(
+                            k.toString(),
+                            Map<String, String>.from(v as Map),
+                          ));
+
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text("${rowMap['pType'] ?? '-'} (${rowMap['color'] ?? '-'})",
+                                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                                Row(
+                                  children: [
+                                    Text("Thickness: ${rowMap['thickness'] ?? '-'} mm"),
+                                    const SizedBox(width: 12),
+                                    Text("Width: ${rowMap['width'] ?? '-'} inch"),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: lengths.entries.map((entry) {
+                                    final length = entry.key;
+                                    final pcs = entry.value['pcs'] ?? '0';
+                                    final ton = entry.value['ton'] ?? '0';
+                                    return Text("Length: $length ft → PCS: $pcs, Ton: $ton");
+                                  }).toList(),
+                                ),
+                                Text("Total PCS: ${rowMap['totalPcs'] ?? '0'}"),
+                                Text("Total Ton: ${rowMap['totalPTon'] ?? '0'}"),
+                                Text("Amount: ${rowMap['amount'] ?? '0'} tk"),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+
                       const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -67,10 +105,8 @@ class OrderPage extends StatelessWidget {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => OrderDetailsPage(
-                                    orderData: data,
-                                    orderId: orderId,
-                                  ),
+                                  builder: (_) =>
+                                      OrderDetailsPage(orderData: data, orderId: orderId),
                                 ),
                               );
                             },
@@ -83,24 +119,26 @@ class OrderPage extends StatelessWidget {
                               try {
                                 final rows = data['rows'] as List<dynamic>? ?? [];
 
-                                // Convert rows to OrderItem safely
                                 final orderItems = rows.map((row) {
                                   final rowMap = Map<String, dynamic>.from(row);
 
-                                  // Parse lengthPcs as Map<int,int>
-                                  final Map<int, int> parseLengthPcs = {};
-                                  if (rowMap['lengthPcs'] != null) {
-                                    (rowMap['lengthPcs'] as Map).forEach((key, value) {
-                                      final intKey = int.tryParse(key.toString()) ?? 0;
-                                      final intValue = int.tryParse(value.toString()) ?? 0;
-                                      parseLengthPcs[intKey] = intValue;
+                                  Map<String, Map<String, String>> lengthsMap = {};
+                                  if (rowMap['lengths'] != null) {
+                                    (rowMap['lengths'] as Map).forEach((k, v) {
+                                      lengthsMap[k.toString()] = Map<String, String>.from(v as Map);
                                     });
                                   }
 
-                                  return models.OrderItem.fromMap({
-                                    ...rowMap,
-                                    'lengthPcs': parseLengthPcs,
-                                  });
+                                  return OrderItem(
+                                    color: rowMap['color']?.toString() ?? '-',
+                                    pType: rowMap['pType']?.toString() ?? 'N/A',
+                                    thickness: rowMap['thickness']?.toString() ?? '0',
+                                    width: rowMap['width']?.toString() ?? '-',
+                                    lengths: lengthsMap,
+                                    totalPTon: rowMap['totalPTon']?.toString() ?? '0',
+                                    totalPcs: rowMap['totalPcs']?.toString() ?? '0',
+                                    amount: rowMap['amount']?.toString() ?? '0',
+                                  );
                                 }).toList();
 
                                 await PDFGeneratorService.generateDeliveryOrderPDF(
@@ -115,16 +153,17 @@ class OrderPage extends StatelessWidget {
                                 );
 
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('PDF generated successfully')));
+                                  const SnackBar(content: Text('PDF generated successfully')),
+                                );
                               } catch (e) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Error generating PDF: $e')));
+                                  SnackBar(content: Text('Error generating PDF: $e')),
+                                );
                               }
                             },
                             style: TextButton.styleFrom(foregroundColor: Colors.black),
                             child: const Text("Download"),
                           ),
-
 
                           // Delete Button
                           TextButton(
@@ -155,58 +194,6 @@ class OrderPage extends StatelessWidget {
             },
           );
         },
-      ),
-    );
-  }
-}
-
-// New page to show full order details
-class OrderDetailsPage extends StatelessWidget {
-  final Map<String, dynamic> orderData;
-  final String orderId;
-  const OrderDetailsPage({super.key, required this.orderData, required this.orderId});
-
-  @override
-  Widget build(BuildContext context) {
-    final rows = orderData['rows'] as List<dynamic>? ?? [];
-    return Scaffold(
-      appBar: AppBar(title: Text("Order Details - $orderId")),
-      body: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("Client Name: ${orderData['client_name']?.toString() ?? 'N/A'}"),
-            Text("Phone: ${orderData['phone']?.toString() ?? '-'}"),
-            Text("Address: ${orderData['address']?.toString() ?? '-'}"),
-            Text("Date: ${orderData['date']?.toString() ?? '-'}"),
-            const SizedBox(height: 12),
-            Expanded(
-              child: ListView.builder(
-                itemCount: rows.length,
-                itemBuilder: (_, index) {
-                  final row = Map<String, dynamic>.from(rows[index]);
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text(
-                        "${row['particular']?.toString() ?? ''} ${row['width']?.toString() ?? ''} | "
-                            "${row['thickness']?.toString() ?? ''} | "
-                            "${row['lengthValue']?.toString() ?? ''} | "
-                            "PCS: ${row['lengthPcs'] != null ? row['lengthPcs'].values.first.toString() : '-'} | "
-                            "Tons: ${row['totalPTon']?.toString() ?? '0'} | "
-                            "Rate: ${row['pricePerTon']?.toString() ?? '0'}",
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            Text("Grand Total: ${orderData['total_amount']?.toString() ?? '0'} tk",
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          ],
-        ),
       ),
     );
   }
